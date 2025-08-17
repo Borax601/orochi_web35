@@ -590,3 +590,7 @@ html.is-menu-open .mobile-menu-panel{ display:block; }
 @media (max-width:768px){
   .mobile-menu-panel .icon-link .cart-icon{ width:16px; height:16px; }
 }
+
+/* toki-sude-ni-orochi（= body#page-ai-gallery）も gallery と同じ余白に */
+body#page-ai-gallery #main-content { padding-top: 0 !important; }
+body#page-ai-gallery #main-content > .content-section:first-child { margin-top: 0 !important; }
