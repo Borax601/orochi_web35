@@ -378,7 +378,7 @@ let _videoPrevCols = 0;
 
 function getVideoDigestCols() {
   const w = window.innerWidth;
-  if (w >= 1280) return 4;   // PC〜4K
+  if (w >= 1179) return 4;   // PC〜4K
   if (w >= 1024) return 3;   // 小型ノート
   if (w >= 768)  return 2;   // タブレット
   return 1;                  // スマホ
@@ -1048,7 +1048,7 @@ function setupHeaderAutoHide(){
 /* === Shrink header–hero gap to 50% (no SVG size change) =============== */
 (function shrinkHeaderHeroGapByHalf(){
   const header = document.querySelector('header.global-header');
-  // ヒーロー候補（idが無くても拾う）
+  // ヒーロー候補を幅広く探索（idが無くても拾う）
   const hero = document.querySelector('#hero, section.hero, .hero-section, .hero, [data-hero]');
   if (!header || !hero) return;              // 他ページは無効化
 
@@ -1103,7 +1103,7 @@ function setupHeaderAutoHide(){
   window.addEventListener('resize', setRidgeOffset);
 })();
 
-/* === Tighten header↔hero gap by 50% (safe; no SVG change) ============== */
+/* === Tighten header–hero gap by 50% (safe; no SVG change) ============== */
 (function tightenHeaderHeroGap(){
   const header = document.querySelector('header.global-header');
   const hero = document.querySelector('#hero, section.hero, .hero-section, .hero'); // どれかが命中
@@ -1174,52 +1174,6 @@ function setupHeaderAutoHide(){
   } else {
     window.addEventListener('load', run, { once:true });
   }
-
-  // 画面変化にも追随
-  window.addEventListener('resize', run);
-  window.addEventListener('orientationchange', run);
-})();
-
-/* === Halve visual gap by pulling header bottom upward (safe) ========== */
-(function halveGapByHeaderPull(){
-  const header = document.querySelector('header.global-header');
-  const firstContent =
-    document.querySelector('#hero, #hero-intro, section.hero, .hero-section, .hero') ||
-    (document.querySelector('main') ? document.querySelector('main').firstElementChild : null);
-
-  if(!header || !firstContent) return; // 他ページは自動無効化
-
-  // 元の margin-bottom を保存（再計測時に加算されないように）
-  if(!header.dataset.origMb){
-    const mb = getComputedStyle(header).marginBottom;
-    header.dataset.origMb = mb;
-  }
-
-  function measureAndApply(){
-    // ページ基準で “ヘッダー下端 → ヒーロー上端” の現ギャップを測る
-    const headerBottom = header.getBoundingClientRect().bottom + window.scrollY;
-    const heroTop      = firstContent.getBoundingClientRect().top + window.scrollY;
-    const gap          = Math.max(0, heroTop - headerBottom);      // 現在の余白px
-    const pull         = Math.round(gap * 0.5);                    // 半分だけ詰める
-
-    // ベースの margin-bottom に対し、半分分だけマイナス上書き
-    // 例）ベース 0px → -pull px / ベースがある場合はそれを尊重
-    const baseMb = parseFloat(header.dataset.origMb) || 0;
-    header.style.setProperty('margin-bottom', (baseMb - pull) + 'px', 'important');
-
-    // ヘッダーを常に手前に（ナビが上に来るよう維持）
-    const z = getComputedStyle(header).zIndex;
-    if(!z || z === 'auto') header.style.zIndex = '50';
-    if(getComputedStyle(header).position === 'static'){
-      header.style.position = 'relative';
-    }
-  }
-
-  const run = () => requestAnimationFrame(measureAndApply);
-
-  // 画像/SVG等のロード完了後に実寸で適用
-  if(document.readyState === 'complete') run();
-  else window.addEventListener('load', run, { once:true });
 
   // 画面変化にも追随
   window.addEventListener('resize', run);
@@ -1401,4 +1355,84 @@ function setupHeaderAutoHide(){
       syncPanelTop();
     }
   });
+})();
+
+/* ===== OVERRIDE: 動くオロチ奉納殿 4列しきい値を 1179px に =====
+   既存の描画・データ処理は一切変更しません（列数判定のみ）。
+   理由: styles.css は min 260px + gap 28px → 4列に必要な幅≒1124px。
+   よって 1179px まで 4列を維持してもレイアウトは崩れません。
+*/
+(() => {
+  const MIN_CARD = 260;   // styles.css と同じ下限
+  const GAP = 28;         // styles.css と同じギャップ
+
+  // 既存を安全に上書き
+  window.getVideoDigestCols = function getVideoDigestCols() {
+    const grid = document.getElementById('video-digest-grid');
+
+    // 幅が取れない初期タイミング用フォールバック（しきい値=1179）
+    const fallback = () => {
+      const w = window.innerWidth || 0;
+      if (w >= 1179) return 4;   // 1179px 以上は 4 枚
+      if (w >= 1024) return 3;
+      if (w >= 768)  return 2;
+      return 1;
+    };
+
+    if (!grid) return fallback();
+
+    // コンテナ幅を優先的に採用（より安定）
+    let width = grid.getBoundingClientRect().width || 0;
+    if (!width && grid.parentElement) {
+      width = grid.parentElement.getBoundingClientRect().width || 0;
+    }
+    if (!width) return fallback();
+
+    // コンテナ幅から列数を算出（最大4にクランプ）
+    const cols = Math.floor((width + GAP) / (MIN_CARD + GAP));
+    return Math.max(1, Math.min(4, cols));
+  };
+
+  // すでに Section が描画済みなら即反映（未初期化なら何もしない）
+  try { if (typeof refreshVideoDigest === 'function') refreshVideoDigest(); } catch(_) {}
+})();
+
+/* === Video digest OVERRIDE: 1179px まで4列を維持 =================== */
+/* 既存ロジックは触らず「列数判定」だけを上書き。副作用なし。 */
+(() => {
+  const MIN_CARD = 260;  // styles.css のカード最小幅（実数と整合）
+  const GAP      = 28;   // 同上：カード間ギャップ
+
+  function getVideoDigestCols() {
+    const grid = document.getElementById('video-digest-grid');
+
+    // 初期計測が難しいタイミング向けフォールバック（ウィンドウ幅基準）。
+    // ★要件：1179px までは 4列 を維持
+    const fallback = () => {
+      const w = window.innerWidth || 0;
+      if (w >= 1179) return 4;
+      if (w >= 1024) return 3;
+      if (w >= 768)  return 2;
+      return 1;
+    };
+
+    if (!grid) return fallback();
+
+    // 可能ならコンテナ実幅から列数を算出（より堅牢）
+    let width = grid.getBoundingClientRect().width || 0;
+    if (!width && grid.parentElement) {
+      width = grid.parentElement.getBoundingClientRect().width || 0;
+    }
+    if (!width) return fallback();
+
+    // コンテナ幅から（260px＋28px）を並べられる数を計算。最大4列。
+    const cols = Math.floor((width + GAP) / (MIN_CARD + GAP));
+    return Math.max(1, Math.min(4, cols));
+  }
+
+  // 既存の参照先を、この実装に差し替え
+  window.getVideoDigestCols = getVideoDigestCols;
+
+  // 反映を即座に確認するため、1回だけ再描画を試みる（存在チェック付き）
+  try { if (typeof refreshVideoDigest === 'function') refreshVideoDigest(); } catch(_) {}
 })();
