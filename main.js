@@ -152,18 +152,18 @@ function parseCSVToWorks(text) {
     const cols = parseCSVLine(line);
     if (cols.length < 4) { console.warn(`[CSV] L${i+2} 列不足`, line); continue; }
 
-    const rawDate = (cols[0] || '').trim();
-    const digits  = rawDate.replace(/\D/g, '');
+    const rawDate = (cols[0]||'').trim();
+    const digits  = rawDate.replace(/\D/g,'');
     if (!/^\d{8}$/.test(digits)) { console.warn(`[CSV] L${i+2} 日付不正`, rawDate); continue; }
 
-    const title       = (cols[1] || '').trim();
-    const category    = (cols[2] || '').trim();
-    const description = (cols[3] || '').trim();
+    const title       = (cols[1]||'').trim();
+    const category    = (cols[2]||'').trim();
+    const description = (cols[3]||'').trim();
 
     out.push({
       id: i + 1,
       date: digits,
-      month: parseInt(digits.substring(4, 6), 10),
+      month: parseInt(digits.substring(4,6),10),
       title, category, description,
       image_filename: `img_${digits}.png`,
     });
@@ -379,8 +379,8 @@ let _videoPrevCols = 0;
 function getVideoDigestCols() {
   const w = window.innerWidth;
   if (w >= 1179) return 4;   // PC〜4K
-  if (w >= 1024) return 3;   // 小型ノート
-  if (w >= 768)  return 2;   // タブレット
+  if (w >= 891) return 3;   // 小型ノート
+  if (w >= 603)  return 2;   // タブレット
   return 1;                  // スマホ
 }
 
@@ -1374,8 +1374,8 @@ function setupHeaderAutoHide(){
     const fallback = () => {
       const w = window.innerWidth || 0;
       if (w >= 1179) return 4;   // 4列 … 1179px 以上
-      if (w >= 1024) return 3;
-      if (w >= 768)  return 2;
+      if (w >= 891)  return 3;   // 3列 … 891px 〜 1178px
+      if (w >= 603)  return 2;   // 2列 … 603px 〜 890px
       return 1;
     };
 
@@ -1398,7 +1398,7 @@ function setupHeaderAutoHide(){
 })();
 
 /* === Video digest OVERRIDE: 1179px まで4列を維持 =================== */
-/* 既存ロジックは触らず「列数判定」だけを上書き。副作用なし。 */
+/* 既存ロジックは触らず「列数判定」だけを上書き。描画は既存の refreshVideoDigest() を使用。 */
 (() => {
   const MIN_CARD = 260;  // styles.css のカード最小幅（実数と整合）
   const GAP      = 28;   // 同上：カード間ギャップ
@@ -1411,8 +1411,8 @@ function setupHeaderAutoHide(){
     const fallback = () => {
       const w = window.innerWidth || 0;
       if (w >= 1179) return 4;
-      if (w >= 1024) return 3;
-      if (w >= 768)  return 2;
+      if (w >= 891)  return 3;
+      if (w >= 603)  return 2;
       return 1;
     };
 
@@ -1437,74 +1437,56 @@ function setupHeaderAutoHide(){
   try { if (typeof refreshVideoDigest === 'function') refreshVideoDigest(); } catch(_) {}
 })();
 
-/* === AI digest OVERRIDE: 3列は891pxまで維持（4/3/2/1の1段表示） ============ */
+/* === [FINAL OVERRIDE] VideoDigest cols: 4/3/2/1 @ 1179/891/603 ====== */
+/* 列数判定だけを差し替え。描画は既存の refreshVideoDigest() を使用。 */
 (() => {
-  // 既存の名前を「最後に」定義して安全に上書き（他ロジックに副作用なし）
-  window.getAIDigestCols = function getAIDigestCols() {
+  function finalVideoCols() {
     const w = window.innerWidth || 0;
-    if (w >= 1179) return 4;  // 4列 … 1179px 以上
-    if (w >= 891)  return 3;  // 3列 … 891px 〜 1178px
-    if (w >= 603)  return 2;  // 2列 … 603px 〜 890px
-    return 1;                 // 1列 … 602px 以下
-  };
-
-  // すでにセクションが描画済みなら即反映（未初期化なら何もしない）
-  try { if (typeof refreshAIDigest === 'function') refreshAIDigest(); } catch (_) {}
-})();
-
-/* === FINAL OVERRIDE: AIDigest 3cols down to 891px ======================= */
-(() => {
-  // 4/3/2/1 の1段レンダリング用の最終しきい値
-  window.getAIDigestCols = function getAIDigestCols() {
-    const w = window.innerWidth || 0;
-    if (w >= 1179) return 4;  // 1179px 以上は4枚
-    if (w >= 891)  return 3;  // 891〜1178px は3枚 ← ここを確実に有効化
-    if (w >= 603)  return 2;  // 603〜890px は2枚
-    return 1;                 // 〜602px は1枚
-  };
-
-  // すでに初期化済みなら即反映（未初期化なら何もしなくてOK）
-  try { if (typeof refreshAIDigest === 'function') refreshAIDigest(); } catch (_) {}
-
-  // デバッグ確認用（不要なら削除可）
-  try { console.info('[AIDigest] final override active (4/3/2/1 @ 1179/891/603)'); } catch(_){}
-})();
-
-/* === [FINAL OVERRIDE] AIDigest cols: 4/3/2/1 @ 1179/891/603 === */
-(function () {
-  function aiColsFinal() {
-    const w = window.innerWidth;
-    if (w >= 1179) return 4;  // 4枚: 1179px以上
-    if (w >= 891)  return 3;  // 3枚: 891px以上
-    if (w >= 603)  return 2;  // 2枚: 603px以上
-    return 1;                 // 1枚: それ未満
+    if (w >= 1179) return 4;  // 4枚 … 1179px以上
+    if (w >= 891)  return 3;  // 3枚 … 891〜1178px  ← ★今回ここまで3枚
+    if (w >= 603)  return 2;  // 2枚 … 603〜890px
+    return 1;                 // 1枚 … 〜602px
   }
 
-  // これ以降、この関数だけが参照されるように上書き
-  window.getAIDigestCols = aiColsFinal;
+  // 列数関数を最終上書き
+  window.getVideoDigestCols = finalVideoCols;
 
-  // 初期描画で古い関数が使われていても、ロード完了後に一度だけ正しい列数で再描画
+  // 旧定義で初期描画されていても、ロード完了後に1回だけ正しい列数で再描画
   window.addEventListener('load', () => {
     try {
-      if (typeof refreshAIDigest === 'function') {
-        // 直前の列数キャッシュが残っていても必ず再描画されるようにリセット
-        if (typeof window._aiPrevCols !== 'undefined') window._aiPrevCols = 0;
-        refreshAIDigest();
+      if (typeof refreshVideoDigest === 'function') {
+        // 既存の“前回列数キャッシュ”がある環境でも確実に再描画されるよう保険
+        if (typeof window._videoPrevCols !== 'undefined') window._videoPrevCols = -1;
+        refreshVideoDigest();
       }
-    } catch (e) {
-      console.warn('[AIDigest] final override refresh skipped:', e);
-    }
+    } catch (_) {}
   });
 
-  console.info('[AIDigest] final override active (4/3/2/1 @ 1179/891/603)');
+  // 確認用ログ（不要なら後で削除OK）
+  try { console.info('[VideoDigest] final override active (4/3/2/1 @ 1179/891/603)'); } catch(_){}
 })();
 
-/* === FINAL OVERRIDE: AIDigest cols 4/3/2/1 @ 1179/891/603 === */
+/* === [FINAL OVERRIDE] VideoDigest cols: 4/3/2/1 @ 1179/891/603 ====== */
 (() => {
-  const cols = (w) => (w>=1179?4 : w>=891?3 : w>=603?2 : 1);
-  window.getAIDigestCols = () => cols(window.innerWidth || 0);
-  // 初期描画が旧定義で走っていても、ロード後に1回だけ正しい列数で再描画
+  function finalVideoCols() {
+    const w = window.innerWidth || 0;
+    if (w >= 1179) return 4;
+    if (w >= 891)  return 3;  // ← 要件
+    if (w >= 603)  return 2;
+    return 1;
+  }
+  window.getVideoDigestCols = finalVideoCols;
   window.addEventListener('load', () => {
-    try { if (typeof refreshAIDigest==='function'){ window._aiPrevCols=0; refreshAIDigest(); } } catch(_){}
+    try {
+      if (typeof refreshVideoDigest === 'function') {
+        if (typeof window._videoPrevCols !== 'undefined') window._videoPrevCols = -1;
+        refreshVideoDigest();
+      }
+    } catch {}
   });
 })();
+
+// 未定義でも例外にしない無害スタブ（既にあれば上書きしない）
+if (typeof window.measureAndApply !== 'function') {
+  window.measureAndApply = function(){ /* no-op */ };
+}
