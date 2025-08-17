@@ -336,8 +336,8 @@ function getAIDigestCols() {
   const w = window.innerWidth;
   // 要件: 横1179pxまでは4枚表示を維持
   if (w >= 1179) return 4;
-  if (w >= 1024) return 3;   // 小型ノート
-  if (w >= 768)  return 2;   // タブレット
+  if (w >= 891) return 3;   // 小型ノート
+  if (w >= 603)  return 2;   // タブレット
   return 1;                  // スマホ
 }
 
@@ -1373,7 +1373,7 @@ function setupHeaderAutoHide(){
     // 幅が取れない初期タイミング用フォールバック（しきい値=1179）
     const fallback = () => {
       const w = window.innerWidth || 0;
-      if (w >= 1179) return 4;   // 1179px 以上は 4 枚
+      if (w >= 1179) return 4;   // 4列 … 1179px 以上
       if (w >= 1024) return 3;
       if (w >= 768)  return 2;
       return 1;
@@ -1435,4 +1435,76 @@ function setupHeaderAutoHide(){
 
   // 反映を即座に確認するため、1回だけ再描画を試みる（存在チェック付き）
   try { if (typeof refreshVideoDigest === 'function') refreshVideoDigest(); } catch(_) {}
+})();
+
+/* === AI digest OVERRIDE: 3列は891pxまで維持（4/3/2/1の1段表示） ============ */
+(() => {
+  // 既存の名前を「最後に」定義して安全に上書き（他ロジックに副作用なし）
+  window.getAIDigestCols = function getAIDigestCols() {
+    const w = window.innerWidth || 0;
+    if (w >= 1179) return 4;  // 4列 … 1179px 以上
+    if (w >= 891)  return 3;  // 3列 … 891px 〜 1178px
+    if (w >= 603)  return 2;  // 2列 … 603px 〜 890px
+    return 1;                 // 1列 … 602px 以下
+  };
+
+  // すでにセクションが描画済みなら即反映（未初期化なら何もしない）
+  try { if (typeof refreshAIDigest === 'function') refreshAIDigest(); } catch (_) {}
+})();
+
+/* === FINAL OVERRIDE: AIDigest 3cols down to 891px ======================= */
+(() => {
+  // 4/3/2/1 の1段レンダリング用の最終しきい値
+  window.getAIDigestCols = function getAIDigestCols() {
+    const w = window.innerWidth || 0;
+    if (w >= 1179) return 4;  // 1179px 以上は4枚
+    if (w >= 891)  return 3;  // 891〜1178px は3枚 ← ここを確実に有効化
+    if (w >= 603)  return 2;  // 603〜890px は2枚
+    return 1;                 // 〜602px は1枚
+  };
+
+  // すでに初期化済みなら即反映（未初期化なら何もしなくてOK）
+  try { if (typeof refreshAIDigest === 'function') refreshAIDigest(); } catch (_) {}
+
+  // デバッグ確認用（不要なら削除可）
+  try { console.info('[AIDigest] final override active (4/3/2/1 @ 1179/891/603)'); } catch(_){}
+})();
+
+/* === [FINAL OVERRIDE] AIDigest cols: 4/3/2/1 @ 1179/891/603 === */
+(function () {
+  function aiColsFinal() {
+    const w = window.innerWidth;
+    if (w >= 1179) return 4;  // 4枚: 1179px以上
+    if (w >= 891)  return 3;  // 3枚: 891px以上
+    if (w >= 603)  return 2;  // 2枚: 603px以上
+    return 1;                 // 1枚: それ未満
+  }
+
+  // これ以降、この関数だけが参照されるように上書き
+  window.getAIDigestCols = aiColsFinal;
+
+  // 初期描画で古い関数が使われていても、ロード完了後に一度だけ正しい列数で再描画
+  window.addEventListener('load', () => {
+    try {
+      if (typeof refreshAIDigest === 'function') {
+        // 直前の列数キャッシュが残っていても必ず再描画されるようにリセット
+        if (typeof window._aiPrevCols !== 'undefined') window._aiPrevCols = 0;
+        refreshAIDigest();
+      }
+    } catch (e) {
+      console.warn('[AIDigest] final override refresh skipped:', e);
+    }
+  });
+
+  console.info('[AIDigest] final override active (4/3/2/1 @ 1179/891/603)');
+})();
+
+/* === FINAL OVERRIDE: AIDigest cols 4/3/2/1 @ 1179/891/603 === */
+(() => {
+  const cols = (w) => (w>=1179?4 : w>=891?3 : w>=603?2 : 1);
+  window.getAIDigestCols = () => cols(window.innerWidth || 0);
+  // 初期描画が旧定義で走っていても、ロード後に1回だけ正しい列数で再描画
+  window.addEventListener('load', () => {
+    try { if (typeof refreshAIDigest==='function'){ window._aiPrevCols=0; refreshAIDigest(); } } catch(_){}
+  });
 })();
